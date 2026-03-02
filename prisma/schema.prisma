@@ -1,0 +1,567 @@
+// CiciPet - Pet Ekosistemi PWA
+generator client {
+    provider      = "prisma-client-js"
+    binaryTargets = ["native", "rhel-openssl-1.0.x"]
+}
+
+datasource db {
+    provider  = "postgresql"
+    url       = env("DATABASE_URL")
+    directUrl = env("DIRECT_URL")
+}
+
+// NextAuth Models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// User Model (Extended for CiciPet)
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  isAdmin       Boolean   @default(false)
+  points        Int       @default(100)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  accounts         Account[]
+  sessions         Session[]
+  pets             Pet[]
+  stories          Story[]
+  comments         Comment[]
+  likes            Like[]
+  pointsHistory    PointsHistory[]
+  notifications    Notification[]
+  reports          Report[]
+  competitionVotes CompetitionEntry[] @relation("VoterRelation")
+  dailySpins       DailySpin[]
+  listings         Listing[]
+  matchRequests    PetMatchRequest[]
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+  donations        Donation[]
+  listingLikes     ListingLike[]
+  listingComments  ListingComment[]
+  loginStreak      DailyLoginStreak?
+}
+
+// Pet Model
+model Pet {
+  id              String    @id @default(cuid())
+  name            String
+  species         String // kedi, köpek, kuş, diğer
+  breed           String?
+  gender          String? // erkek, dişi, bilinmiyor
+  age             Int?
+  location        String?   // İl/İlçe
+  description     String?   @db.Text
+  imageUrl        String?
+  cloudStoragePath String?
+  isPublic        Boolean   @default(false)
+  lookingForMatch Boolean   @default(false) // Eş arıyor mu?
+  moderationStatus String   @default("pending") // pending, approved, rejected
+  likesCount      Int       @default(0)
+  commentsCount   Int       @default(0)
+  ownerId         String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  owner              User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  stories            Story[]
+  likes              Like[]
+  comments           Comment[]
+  reports            Report[]
+  competitionEntries CompetitionEntry[]
+  wonCompetitions    Competition[]      @relation("CompetitionWinner")
+  matchRequestsSent  PetMatchRequest[]  @relation("MatchRequester")
+  matchRequestsReceived PetMatchRequest[] @relation("MatchTarget")
+
+  @@index([ownerId])
+  @@index([moderationStatus])
+}
+
+// Story Model
+model Story {
+  id               String   @id @default(cuid())
+  title            String
+  content          String   @db.Text
+  imageUrl         String?
+  cloudStoragePath String?
+  isPublic         Boolean  @default(false)
+  likesCount       Int      @default(0)
+  commentsCount    Int      @default(0)
+  sharesCount      Int      @default(0)
+  authorId         String
+  petId            String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  pet      Pet       @relation(fields: [petId], references: [id], onDelete: Cascade)
+  likes    Like[]
+  comments Comment[]
+  reports  Report[]
+
+  @@index([authorId])
+  @@index([petId])
+}
+
+// Comment Model
+model Comment {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  authorId  String
+  petId     String?
+  storyId   String?
+  competitionId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  author      User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  pet         Pet?         @relation(fields: [petId], references: [id], onDelete: Cascade)
+  story       Story?       @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  competition Competition? @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  reports     Report[]
+
+  @@index([authorId])
+  @@index([petId])
+  @@index([storyId])
+  @@index([competitionId])
+}
+
+// Like Model
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  petId     String?
+  storyId   String?
+  competitionId String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pet         Pet?         @relation(fields: [petId], references: [id], onDelete: Cascade)
+  story       Story?       @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  competition Competition? @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, petId])
+  @@unique([userId, storyId])
+  @@unique([userId, competitionId])
+  @@index([userId])
+  @@index([petId])
+  @@index([storyId])
+  @@index([competitionId])
+}
+
+// Competition Model
+model Competition {
+  id               String   @id @default(cuid())
+  title            String   @default("En Sevimli Pet")
+  description      String?  @db.Text
+  imageUrl         String?
+  cloudStoragePath String?
+  startDate        DateTime
+  endDate          DateTime
+  status           String   @default("active") // active, ended
+  entryPoints      Int      @default(50)
+  winnerId         String?
+  topic            String?  // Yarışma konusu (en tatlı kedi, en yaramaz köpek vb.)
+  category         String   @default("appearance") // appearance (dış görünüş), behavior (davranış)
+  maxParticipants  Int?     // Maksimum katılımcı limiti (null = sınırsız)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  winner   Pet?               @relation("CompetitionWinner", fields: [winnerId], references: [id])
+  entries  CompetitionEntry[]
+  likes    Like[]
+  comments Comment[]
+  reports  Report[]
+
+  @@index([status])
+  @@index([category])
+}
+
+// Competition Entry Model
+model CompetitionEntry {
+  id            String   @id @default(cuid())
+  competitionId String
+  petId         String
+  votesCount    Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  // Relations
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  pet         Pet         @relation(fields: [petId], references: [id], onDelete: Cascade)
+  voters      User[]      @relation("VoterRelation")
+
+  @@unique([competitionId, petId])
+  @@index([competitionId])
+  @@index([petId])
+}
+
+// Notification Model
+model Notification {
+  id        String   @id @default(cuid())
+  type      String // pet_approved, pet_comment, pet_likes_milestone, story_comment, story_likes_milestone, competition_result
+  title     String
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  userId    String
+  relatedId String? // ID of related entity (pet, story, competition)
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+// Report Model
+model Report {
+  id          String   @id @default(cuid())
+  type        String // pet, story, comment, competition
+  reason      String   @db.Text
+  status      String   @default("pending") // pending, reviewed, dismissed
+  reporterId  String
+  petId       String?
+  storyId     String?
+  commentId   String?
+  competitionId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  reporter    User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  pet         Pet?         @relation(fields: [petId], references: [id], onDelete: Cascade)
+  story       Story?       @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  comment     Comment?     @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  competition Competition? @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@index([reporterId])
+  @@index([status])
+  @@index([petId])
+  @@index([storyId])
+  @@index([commentId])
+  @@index([competitionId])
+}
+
+// Points History Model
+model PointsHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  amount      Int // positive for earned, negative for spent
+  type        String // story_share, comment, external_share, competition_entry, daily_spin
+  description String
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Daily Spin (CiciŞans) Model
+model DailySpin {
+  id        String   @id @default(cuid())
+  userId    String
+  reward    Int      // Kazanılan puan
+  spinDate  DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([spinDate])
+}
+
+// Listing (Kayıp/Sahiplendirme) Model
+model Listing {
+  id               String   @id @default(cuid())
+  type             String   // lost, adoption
+  title            String
+  description      String   @db.Text
+  petName          String
+  species          String   // kedi, köpek, kuş, diğer
+  breed            String?
+  gender           String?  // erkek, dişi, bilinmiyor
+  age              String?  // yavru, genç, yetişkin, yaşlı
+  color            String?
+  location         String   // İl/İlçe
+  contactPhone     String?
+  contactEmail     String?
+  imageUrl         String?
+  cloudStoragePath String?
+  isPublic         Boolean  @default(false)
+  status           String   @default("active") // active, found, adopted, closed
+  lastSeenDate     DateTime? // Kayıp ilanları için
+  likesCount       Int      @default(0)
+  commentsCount    Int      @default(0)
+  userId           String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes    ListingLike[]
+  comments ListingComment[]
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([species])
+  @@index([location])
+}
+
+// Pet Match Request Model
+model PetMatchRequest {
+  id          String   @id @default(cuid())
+  petId       String   // Eş arayan pet
+  targetPetId String   // Hedef pet
+  status      String   @default("pending") // pending, accepted, rejected
+  message     String?  @db.Text
+  userId      String   // İstek sahibi
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  pet       Pet  @relation("MatchRequester", fields: [petId], references: [id], onDelete: Cascade)
+  targetPet Pet  @relation("MatchTarget", fields: [targetPetId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([petId, targetPetId])
+  @@index([petId])
+  @@index([targetPetId])
+  @@index([userId])
+  @@index([status])
+}
+
+// Message Model (Mesajlaşma)
+model Message {
+  id         String   @id @default(cuid())
+  content    String   @db.Text
+  senderId   String
+  receiverId String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  // Relations
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
+  @@index([isRead])
+}
+
+// Shelter (Barınak) Model
+model Shelter {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  location    String
+  imageUrl    String?
+  contactPhone String?
+  contactEmail String?
+  website     String?
+  isActive    Boolean  @default(true)
+  totalDonations Int   @default(0) // Toplam alınan mama kapı
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  donations   Donation[]
+
+  @@index([location])
+  @@index([isActive])
+}
+
+// Donation (Bağış) Model
+model Donation {
+  id          String   @id @default(cuid())
+  userId      String
+  shelterId   String
+  pointsSpent Int      // Harcanan CiciPuan
+  foodBowls   Int      // Bağışlanan mama kapı sayısı
+  type        String   @default("points") // points, competition_prize
+  message     String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shelter Shelter @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([shelterId])
+  @@index([createdAt])
+}
+
+// Listing Like Model
+model ListingLike {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([userId])
+  @@index([listingId])
+}
+
+// Listing Comment Model
+model ListingComment {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([listingId])
+  @@index([createdAt])
+}
+
+// Event (Etkinlik) Model
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  imageUrl    String?
+  location    String?
+  eventDate   DateTime
+  endDate     DateTime?
+  status      String   @default("upcoming") // upcoming, active, ended
+  eventType   String   @default("meetup") // meetup, adoption_day, health_check, workshop
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([eventDate])
+  @@index([eventType])
+}
+
+// Article (Makale) Model
+model Article {
+  id          String   @id @default(cuid())
+  title       String
+  content     String   @db.Text
+  summary     String?
+  imageUrl    String?
+  category    String   // health, care, nutrition
+  isPublished Boolean  @default(true)
+  viewCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([isPublished])
+  @@index([createdAt])
+}
+
+// CMS Module Model (Admin tarafından yönetilen modüller)
+model CMSModule {
+  id          String   @id @default(cuid())
+  slug        String   @unique // module1, module2, vb.
+  title       String?
+  description String?  @db.Text
+  imageUrl    String?
+  cloudStoragePath String?
+  linkUrl     String?
+  linkText    String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+// Affiliate Product Model (Satış ortaklığı ürünleri)
+model AffiliateProduct {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  imageUrl     String?
+  affiliateUrl String   // Referans linki
+  platform     String   @default("trendyol") // trendyol, hepsiburada, amazon
+  price        String?  // Fiyat bilgisi (opsiyonel)
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  clickCount   Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([platform])
+  @@index([isActive])
+}
+
+// Daily Login Streak Model (Günlük giriş serisi)
+model DailyLoginStreak {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  currentStreak Int     @default(0) // Mevcut seri
+  longestStreak Int     @default(0) // En uzun seri
+  lastLoginDate DateTime // Son giriş tarihi
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

@@ -1,0 +1,28 @@
+{
+    "framework": "nextjs",
+    "buildCommand": "npx prisma generate && next build",
+    "devCommand": "next dev",
+    "installCommand": "npm install --legacy-peer-deps",
+    "functions": {
+        "app/api/**": {
+            "maxDuration": 30
+        }
+    },
+    "regions": [
+        "fra1"
+    ],
+    "env": {
+        "NEXTAUTH_URL": "@nextauth-url",
+        "NEXTAUTH_SECRET": "@nextauth-secret",
+        "DATABASE_URL": "@database-url",
+        "DIRECT_URL": "@direct-url",
+        "SUPABASE_URL": "@supabase-url",
+        "SUPABASE_SERVICE_ROLE_KEY": "@supabase-service-role-key",
+        "NEXT_PUBLIC_SUPABASE_URL": "@next-public-supabase-url",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next-public-supabase-anon-key",
+        "GOOGLE_CLIENT_ID": "@google-client-id",
+        "GOOGLE_CLIENT_SECRET": "@google-client-secret",
+        "NEXT_PUBLIC_RECAPTCHA_SITE_KEY": "@next-public-recaptcha-site-key",
+        "RECAPTCHA_SECRET_KEY": "@recaptcha-secret-key"
+    }
+}

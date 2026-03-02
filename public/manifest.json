@@ -1,0 +1,37 @@
+{
+  "name": "CiciPet - Sevgiyi Hisset",
+  "short_name": "CiciPet",
+  "description": "Türkiye'nin Pet Sosyal Ağı - Petinizi paylaşın, hikayeler yazın, yarışmalara katılın ve puan kazanın!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#E0F7FA",
+  "theme_color": "#24D2FB",
+  "orientation": "portrait-primary",
+  "categories": ["social", "lifestyle"],
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
