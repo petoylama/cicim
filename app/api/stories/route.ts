@@ -114,8 +114,8 @@ export async function POST(request: Request) {
       data: {
         title: title.trim(),
         content: content.trim(),
-        authorId: session.user.id,
-        petId: petId || null,
+        author: { connect: { id: session.user.id } },
+        ...(petId ? { pet: { connect: { id: petId } } } : {}),
         imageUrl: imageUrl || null,
         cloudStoragePath: cloudStoragePath || null,
         isPublic: isPublic ?? true,
