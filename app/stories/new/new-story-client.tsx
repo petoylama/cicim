@@ -147,7 +147,7 @@ export default function NewStoryClient({ pets }: { pets: Pet[] }) {
         body: JSON.stringify({
           title: formData.title.trim(),
           content: formData.content.trim(),
-          petId: formData.petId || null,
+          petId: formData.petId && formData.petId !== 'none' ? formData.petId : null,
           imageUrl: imageData?.imageUrl || null,
           cloudStoragePath: imageData?.cloudStoragePath || null,
           isPublic: true,
