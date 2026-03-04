@@ -62,12 +62,21 @@ export const authOptions: NextAuthOptions = {
         token.isAdmin = (user as any).isAdmin ?? false;
         token.points = (user as any).points ?? 100;
       }
-      
+
+      // ADMIN_EMAIL env var'ında tanımlı e-postalar her zaman admin olur
+      const adminEmails = (process.env.ADMIN_EMAIL ?? '')
+        .split(',')
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean);
+      if (token.email && adminEmails.includes(token.email.toLowerCase())) {
+        token.isAdmin = true;
+      }
+
       // Update token when session is updated
       if (trigger === 'update' && session) {
         token.points = session.points;
       }
-      
+
       return token;
     },
     async session({ session, token }) {
