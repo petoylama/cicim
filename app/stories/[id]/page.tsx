@@ -9,8 +9,9 @@ export const dynamic = 'force-dynamic';
 export default async function StoryDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {
@@ -18,7 +19,7 @@ export default async function StoryDetailPage({
   }
 
   const story = await prisma.story.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       author: {
         select: { id: true, name: true, image: true },
@@ -45,7 +46,7 @@ export default async function StoryDetailPage({
   const like = await prisma.like.findFirst({
     where: {
       userId: session.user.id,
-      storyId: params.id,
+      storyId: id,
     },
   });
 

@@ -4,7 +4,8 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import PetForm from '../../pet-form';
 
-export default async function EditPetPage({ params }: { params: { id: string } }) {
+export default async function EditPetPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {
@@ -12,7 +13,7 @@ export default async function EditPetPage({ params }: { params: { id: string } }
   }
 
   const pet = await prisma.pet.findUnique({
-    where: { id: params?.id },
+    where: { id },
   });
 
   if (!pet) {

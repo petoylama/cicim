@@ -9,8 +9,9 @@ export const dynamic = 'force-dynamic';
 export default async function CompetitionDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {
@@ -18,7 +19,7 @@ export default async function CompetitionDetailPage({
   }
 
   const competition = await prisma.competition.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       winner: {
         select: { id: true, name: true, imageUrl: true, species: true },

@@ -6,7 +6,8 @@ import EditStoryClient from './edit-story-client';
 
 export const dynamic = 'force-dynamic';
 
-export default async function EditStoryPage({ params }: { params: { id: string } }) {
+export default async function EditStoryPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {
@@ -14,7 +15,7 @@ export default async function EditStoryPage({ params }: { params: { id: string }
   }
 
   const story = await prisma.story.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       pet: { select: { id: true, name: true, species: true } },
     },
