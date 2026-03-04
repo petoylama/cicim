@@ -5,6 +5,17 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from './db';
 import bcrypt from 'bcryptjs';
 
+// Admin olacak e-posta adresleri (env var + sabit liste)
+function getAdminEmails(): string[] {
+  const fromEnv = (process.env.ADMIN_EMAIL ?? '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  // Sabit fallback — Vercel'e env var eklenmeden de çalışır
+  const hardcoded = ['petoylama@gmail.com', 'ekremselcuk@gmail.com'];
+  return Array.from(new Set([...fromEnv, ...hardcoded]));
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: {
@@ -56,19 +67,32 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async signIn({ user }) {
+      // Admin e-posta adreslerini DB'de isAdmin=true olarak işaretle
+      const email = user.email?.toLowerCase() ?? '';
+      if (email && getAdminEmails().includes(email)) {
+        try {
+          await prisma.user.updateMany({
+            where: { email: user.email! },
+            data: { isAdmin: true },
+          });
+        } catch {
+          // DB güncellemesi başarısız olsa bile girişe izin ver
+        }
+      }
+      return true;
+    },
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
+        token.email = user.email;
         token.isAdmin = (user as any).isAdmin ?? false;
         token.points = (user as any).points ?? 100;
       }
 
-      // ADMIN_EMAIL env var'ında tanımlı e-postalar her zaman admin olur
-      const adminEmails = (process.env.ADMIN_EMAIL ?? '')
-        .split(',')
-        .map((e) => e.trim().toLowerCase())
-        .filter(Boolean);
-      if (token.email && adminEmails.includes(token.email.toLowerCase())) {
+      // ADMIN_EMAIL kontrolü (env var + hardcoded liste)
+      const email = (token.email as string | null | undefined)?.toLowerCase() ?? '';
+      if (email && getAdminEmails().includes(email)) {
         token.isAdmin = true;
       }
 
