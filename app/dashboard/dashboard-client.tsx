@@ -65,7 +65,7 @@ interface Story {
   commentsCount: number;
   createdAt: string;
   author: { id: string; name: string | null; image: string | null };
-  pet: { id: string; name: string; imageUrl: string | null; species: string };
+  pet: { id: string; name: string; imageUrl: string | null; species: string } | null;
 }
 
 interface Pet {
@@ -148,7 +148,7 @@ export default function DashboardClient() {
           setTimeout(() => setStreakReward(null), 5000);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const formatDate = (dateString: string) => {
@@ -348,7 +348,7 @@ export default function DashboardClient() {
                     <div className="relative aspect-video bg-gray-100">
                       {story.imageUrl ? (
                         <Image loading="eager" src={story.imageUrl} alt={story.title} fill className="object-cover" unoptimized />
-                      ) : story.pet.imageUrl ? (
+                      ) : story.pet?.imageUrl ? (
                         <Image loading="eager" src={story.pet.imageUrl} alt={story.pet.name} fill className="object-cover" unoptimized />
                       ) : (
                         <div className="flex h-full items-center justify-center">
@@ -474,9 +474,8 @@ export default function DashboardClient() {
                         </div>
                       )}
                       <Badge
-                        className={`absolute left-2 top-2 ${
-                          listing.type === 'lost' ? 'bg-red-500' : 'bg-green-500'
-                        }`}
+                        className={`absolute left-2 top-2 ${listing.type === 'lost' ? 'bg-red-500' : 'bg-green-500'
+                          }`}
                       >
                         {listing.type === 'lost' ? 'Kayıp' : 'Sahiplendirme'}
                       </Badge>
